@@ -1,0 +1,25 @@
+pipeline {
+    agent{
+        node {
+            label 'docker_agent_python'
+        }
+    }
+    tools{
+        nodejs 'Node_js'
+    }
+    Stages {
+        stage('Checkout') {
+            steps {
+                git url: 'https://github.com/hawk-H97/potential-giggle-basic-html', branch: 'main'
+            }
+        }
+    }
+    stages {
+        stage('Build') {
+            steps {
+                sh 'npm install -g htmlhint stylelint'
+                sh 'echo "Tools installed"'
+            }
+        }
+    }
+}
