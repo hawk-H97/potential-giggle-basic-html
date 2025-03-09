@@ -7,7 +7,7 @@ pipeline {
     tools{
         nodejs 'Node_js'
     }
-    Stages {
+    stages {
         stage('Checkout') {
             steps {
                 git url: 'https://github.com/hawk-H97/potential-giggle-basic-html', branch: 'main'
