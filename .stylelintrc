@@ -1,0 +1,7 @@
+{
+  "rules": {
+    "color-no-invalid-hex": true,
+    "unit-allowed-list": ["px", "em", "%"],
+    "declaration-block-no-duplicate-properties": true
+  }
+}
