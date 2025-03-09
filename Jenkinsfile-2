@@ -13,8 +13,6 @@ pipeline {
                 git url: 'https://github.com/hawk-H97/potential-giggle-basic-html', branch: 'main'
             }
         }
-    }
-    stages {
         stage('Build') {
             steps {
                 sh 'npm install -g htmlhint stylelint'
