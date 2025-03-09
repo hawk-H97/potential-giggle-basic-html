@@ -13,7 +13,28 @@ pipeline {
         stage('Build') {
             steps {
                 sh 'npm install -g htmlhint stylelint'
+                sh 'npm fund'
                 sh 'echo "Tools installed"'
+            }
+        }
+        stage('Test') {
+            steps {
+                script {
+                    def htmlLintResult = sh(script: 'htmlhint *.html', returnStatus: true)
+                    if (htmlLintResult != 0) {
+                        echo "HTML linting failed. Check console output."
+                        error "Stopping due to HTML linting error."
+                    } else {
+                        echo "HTML linting passed."
+                    }
+                    def cssLintResult = sh(script: 'stylelint "*.css"', returnStatus: true)
+                    if (cssLintResult !=0) {
+                        echo "CSS linting failed. Check console output."
+                        error "Stopping due to CSS linting errors."
+                    } else {
+                        echo "CSS linting passed."
+                    }
+                }
             }
         }
     }
