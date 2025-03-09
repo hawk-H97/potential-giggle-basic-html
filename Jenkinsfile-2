@@ -24,9 +24,6 @@ pipeline {
             }
         }
         stage('Scan') {
-            environment {
-                scannerHome = tool 'SonarQube Scanner'
-            }
             steps {
                 withSonarQubeEnv(installationName: 'sq1') {
                     sh 'apk add sonar-scanner'
