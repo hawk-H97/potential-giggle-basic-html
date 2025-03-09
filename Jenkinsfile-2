@@ -26,8 +26,6 @@ pipeline {
         stage('Scan') {
             steps {
                 withSonarQubeEnv(installationName: 'sq1') {
-                    sh 'apk add sonar-scanner'
-                    sh 'echo "Sonar-scanner is  installed"'
                     sh '/bin/sonar-scanner -Dsonar.projectKey=Barber_website -Dsonar.projectName=Barber_website'
                 }
             }
