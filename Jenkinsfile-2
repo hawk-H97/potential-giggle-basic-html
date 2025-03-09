@@ -1,11 +1,8 @@
 pipeline {
     agent{
         node {
-            label 'docker_agent_python'
+            label 'docker_agent_jenkins'
         }
-    }
-    tools{
-        nodejs 'Node_js'
     }
     stages {
         stage('Checkout') {
