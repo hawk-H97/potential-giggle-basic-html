@@ -1,8 +1,11 @@
 pipeline {
     agent{
         node {
-            label 'docker_agent_jenkins'
+            label 'docker'
         }
+    }
+    tools {
+        nodejs 'NodeJS'
     }
     stages {
         stage('Checkout') {
@@ -24,9 +27,12 @@ pipeline {
             }
         }
         stage('Scan') {
+            environment {
+                scannerHome = tool 'SonarQube Scanner'
+            }
             steps {
                 withSonarQubeEnv(installationName: 'sq1') {
-                    sh '/bin/sonar-scanner -Dsonar.projectKey=Barber_website -Dsonar.projectName=Barber_website'
+                    sh '${scannerHome}/bin/sonar-scanner -Dsonar.projectKey=Barber_website -Dsonar.projectName=Barber_website'
                 }
             }
         }
