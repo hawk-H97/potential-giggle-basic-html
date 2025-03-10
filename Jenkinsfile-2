@@ -14,6 +14,9 @@ pipeline {
             }
         }
         stage('Build') {
+            environment {
+                nodejs = tool 'NodeJS'
+            }
             steps {
                 sh 'npm install -g htmlhint stylelint'
                 sh 'npm fund'
