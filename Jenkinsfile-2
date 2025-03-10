@@ -10,7 +10,6 @@ pipeline {
     stages {
         stage('Checkout') {
             steps {
-                cleanws()
                 git url: 'https://github.com/hawk-H97/potential-giggle-basic-html', branch: 'main'
             }
         }
