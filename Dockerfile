@@ -1,0 +1,14 @@
+# Use Nginx to serve static files
+FROM nginx:latest
+
+# Set the working directory inside the container
+WORKDIR /usr/share/nginx/html
+
+# Copy all website files from the Jenkins workspace to the container
+COPY . .
+
+# Expose port 80
+EXPOSE 80
+
+# Start Nginx
+CMD ["nginx", "-g", "daemon off;"]

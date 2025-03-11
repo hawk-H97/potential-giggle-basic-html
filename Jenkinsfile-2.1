@@ -18,6 +18,17 @@ pipeline {
                 '''
             }
         }
+        stage('Security Scan (audit-ci)') {
+            steps {
+                sh '''
+                docker run --rm \
+                -v $WORKSPACE:/workspace \
+                -w /workspace \
+                node \
+                bash -c "npm install && npx audit-ci --high"
+                '''
+            }
+        }
         stage('Test') {
             steps {
                 sh '''
@@ -43,10 +54,41 @@ pipeline {
                 }
             }
         }
-    }
-    post {
-        always {
-            sh 'docker stop node-test && docker rm node-test || true'
+        stage('Build Docker Image') {
+            steps {
+                sh '''
+                docker build -t frontend:1.0 .
+                '''
+            }
+        }
+        stage('Trivy Security Scan') {
+            steps {
+                sh '''
+                docker run --rm \
+                -v /var/run/docker.sock:/var/run/docker.sock \
+                aquasec/trivy image frontend:1.0
+                '''
+            }
+        }
+        stage('OWASP ZAP Scan') {
+            steps {
+                sh '''
+                docker network create zap-net || true
+
+                docker run -d --name my-website --network zap-net -p 8080:80 frontend:1.0
+
+                docker run --rm --network zap-net \
+                owasp/zap2docker-stable zap-full-scan.py -t http://my-website:80 -r zap-report.html || true
+                '''
+            }
+        }
+        post {
+            always {
+                sh 'docker stop node-test && docker rm node-test || true'
+                sh 'docker network rm zap-net || true'
+                sh 'docker stop my-website && docker rm my-website || true'
+                archiveArtifacts artifacts: 'zap-report.html', fingerprint: true
+            }
         }
     }
 }
