@@ -12,14 +12,24 @@ pipeline {
         }
         stage('Build') {
             steps {
-                sh 'docker run --rm -v $WORKSPACE:/workspace -w /workspace node bash -c "npm install -g htmlhint stylelint && npm fund && echo Tools installed"'
+                sh '''
+                docker run -dit --name node-test -v $WORKSPACE:/workspace -w /workspace node bash
+                docker exec node-test bash -c "npm install htmlhint stylelint && echo 'Dependencies installed'"
+                '''
             }
         }
         stage('Test') {
             steps {
-                sh 'docker run --rm -v $WORKSPACE:/workspace -w /workspace node bash -c "htmlhint *.html || true"'
-                sh 'docker run --rm -v $WORKSPACE:/workspace -w /workspace node bash -c "stylelint *.css || true"'
+                sh '''
+                docker exec node-test bash -c "npx htmlhint *.html || true"
+                docker exec node-test bash -c "npx stylelint *.css || true"
+                '''
             }
+        }
+    }
+    post {
+        always {
+            sh 'docker stop node-test && docker rm node-test || true'
         }
     }
 }
