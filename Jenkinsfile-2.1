@@ -33,6 +33,8 @@ pipeline {
                     docker run --rm \
                     -v $WORKSPACE:/workspace \
                     -w /workspace \
+                    -e SONAR_HOST_URL=$SONAR_HOST_URL \
+                    -e SONAR_TOKEN=$SONAR_AUTH_TOKEN \
                     sonarsource/sonar-scanner-cli:latest \
                     sonar-scanner \
                     -Dsonar.projectKey=Barber_website \
