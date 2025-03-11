@@ -82,13 +82,14 @@ pipeline {
                 '''
             }
         }
-        post {
-            always {
-                sh 'docker stop node-test && docker rm node-test || true'
-                sh 'docker network rm zap-net || true'
-                sh 'docker stop my-website && docker rm my-website || true'
-                archiveArtifacts artifacts: 'zap-report.html', fingerprint: true
-            }
+    }
+    post {
+        always {
+            sh 'docker stop node-test && docker rm node-test || true'
+            sh 'docker network rm zap-net || true'
+            sh 'docker stop my-website && docker rm my-website || true'
+            archiveArtifacts artifacts: 'zap-report.html', fingerprint: true
         }
+        
     }
 }
