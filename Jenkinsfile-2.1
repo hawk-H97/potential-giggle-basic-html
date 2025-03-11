@@ -73,6 +73,7 @@ pipeline {
         stage('Nuclei DAST Scan') {
             steps {
                 sh '''
+                rm -rf nuclei-report.txt
                 # Create a Docker network (only if not exists)
                 docker network create security-net || true
 
@@ -92,8 +93,8 @@ pipeline {
     post {
         always {
             sh 'docker stop node-test && docker rm node-test || true'
-            sh 'docker network rm security-net || true'
             sh 'docker stop my-website && docker rm my-website || true'
+            sh 'docker network rm security-net || true'
             archiveArtifacts artifacts: 'nuclei-report.txt', fingerprint: true
         }
         
