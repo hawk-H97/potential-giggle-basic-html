@@ -75,16 +75,16 @@ pipeline {
                 sh '''
                 # Create a Docker network (only if not exists)
                 docker network create security-net || true
-        
-                # Run website container in the background
-                docker run -d --name my-website --network security-net -p 5100:80 frontend:1.0
-        
+
+                # Run the website container in the background
+                docker run -d --name my-website --network security-net -p 8080:80 my-website:latest
+                
                 # Wait for the website to be ready
                 sleep 10
-        
-                # Run Nuclei scan
-                docker run --rm --network security-net projectdiscovery/nuclei \
-                -u http://localhost:80 -o nuclei-report.txt || true
+                
+                # Run Nuclei scan and ensure the report file is generated
+                docker run --rm --network security-net -v $(pwd):/data projectdiscovery/nuclei \
+                -u http://my-website:80 -o /data/nuclei-report.txt || true
                 '''
             }
         }
