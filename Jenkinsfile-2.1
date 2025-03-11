@@ -84,7 +84,7 @@ pipeline {
         
                 # Run Nuclei scan
                 docker run --rm --network security-net projectdiscovery/nuclei \
-                -u http://my-website:80 -o nuclei-report.txt || true
+                -u http://localhost:80 -o nuclei-report.txt || true
                 '''
             }
         }
