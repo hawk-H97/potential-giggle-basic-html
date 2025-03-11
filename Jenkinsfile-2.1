@@ -26,6 +26,21 @@ pipeline {
                 '''
             }
         }
+        stage('SonarQube Analysis') {
+            steps {
+                withSonarQubeEnv('SonarQube Server') {
+                    sh '''
+                    docker run --rm \
+                    -v $WORKSPACE:/workspace \
+                    -w /workspace \
+                    sonarsource/sonar-scanner-cli:latest \
+                    sonar-scanner \
+                    -Dsonar.projectKey=Barber_website \
+                    -Dsonar.projectName=Barber_website \
+                    '''
+                }
+            }
+        }
     }
     post {
         always {
