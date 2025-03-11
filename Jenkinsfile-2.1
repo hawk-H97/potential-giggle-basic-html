@@ -1,0 +1,25 @@
+pipeline {
+    agent{
+        node {
+            label 'docker'
+        }
+    }
+    stages {
+        stage('Checkout') {
+            steps {
+                git url: 'https://github.com/hawk-H97/potential-giggle-basic-html', branch: 'feature'
+            }
+        }
+        stage('Build') {
+            steps {
+                sh 'docker run --rm -v $WORKSPACE:/workspace -w /workspace node bash -c "npm install -g htmlhint stylelint && npm fund && echo Tools installed"'
+            }
+        }
+        stage('Test') {
+            steps {
+                sh 'docker run --rm -v $WORKSPACE:/workspace -w /workspace node bash -c "htmlhint *.html || true"'
+                sh 'docker run --rm -v $WORKSPACE:/workspace -w /workspace node bash -c "stylelint *.css || true"'
+            }
+        }
+    }
+}
