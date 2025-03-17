@@ -124,7 +124,7 @@ pipeline {
             publishHTML([
                 reportDir: 'reports',
                 reportFiles: 'htmlhint-report.html,stylelint-report.html,sonarqube-report.html,nuclei-report.html,trivy-report.html',
-                reportName: 'Pipeline Reports'
+                reportName: 'Pipeline Reports',
                 keepAll: true
             ])
         }
