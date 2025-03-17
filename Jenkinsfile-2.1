@@ -1,3 +1,9 @@
+stage('Cleanup Workspcae') {
+    steps {
+        deleteDir() // clean before starting the pipeline
+    }
+}
+
 pipeline {
     agent{
         node {
