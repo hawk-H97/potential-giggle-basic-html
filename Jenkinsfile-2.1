@@ -1,3 +1,10 @@
+stage('Cleanup Workspcae') {
+    steps {
+        deleteDir() // clean before starting the pipeline
+    }
+}
+
+
 pipeline {
     agent{
         node {
@@ -10,7 +17,7 @@ pipeline {
                 git url: 'https://github.com/hawk-H97/potential-giggle-basic-html', branch: 'feature'
             }
         }
-        stage('Build') {
+        stage('Dependencies') {
             steps {
                 sh '''
                 docker run -dit --name node-test -v $WORKSPACE:/workspace -w /workspace node bash
@@ -32,8 +39,8 @@ pipeline {
         stage('Test') {
             steps {
                 sh '''
-                docker exec node-test bash -c "npx htmlhint *.html || true"
-                docker exec node-test bash -c "npx stylelint *.css || true"
+                docker exec node-test bash -c "npx htmlhint 'src/*.html' || true"
+                docker exec node-test bash -c "npx stylelint 'src/*.css' || true"
                 '''
             }
         }
@@ -48,9 +55,27 @@ pipeline {
                     -e SONAR_TOKEN=$SONAR_AUTH_TOKEN \
                     sonarsource/sonar-scanner-cli:latest \
                     sonar-scanner \
+                    -Dsonar.sources=src \
                     -Dsonar.projectKey=Barber_website \
-                    -Dsonar.projectName=Barber_website \
+                    -Dsonar.projectName=Barber_website | tee reports/sonarqube-report.html
                     '''
+                }
+            }
+        }
+        stage('Verify SonarQube Results') {
+            steps {
+                script {
+                    echo "Pipeline paused for manual verification of SonarQube results."
+                    echo "Check SonarQube dashboard at: https://sonar-qube.hawksec.duckdns.org/dashboard?id=Barber_website"
+                    input message: 'SonarQube analysis complete. Review vulnerabilities and approve to continue.',
+                          ok: 'Approve',
+                          submitter: 'admin,user1,user2',
+                          parameters: [
+                            choice(name: 'ACTION', choice: ['Continue', 'Abort'], description: 'Select an action')
+                          ]
+                    if (Action == 'Abort') {
+                        error "Pipeline aborted by user after SonarQube review."
+                    }
                 }
             }
         }
@@ -64,9 +89,8 @@ pipeline {
         stage('Trivy Security Scan') {
             steps {
                 sh '''
-                docker run --rm \
-                -v /var/run/docker.sock:/var/run/docker.sock \
-                aquasec/trivy image frontend:1.0
+                docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v $(pwd):/workspace aquasec/trivy \
+                image --format template --template "@contrib/html.tpl" -o reports/trivy-report.html frontend:1.0 || true 
                 '''
             }
         }
@@ -95,7 +119,14 @@ pipeline {
             sh 'docker stop node-test && docker rm node-test || true'
             sh 'docker stop my-website && docker rm my-website || true'
             sh 'docker network rm security-net || true'
+            sh 'docker rmi frontend:1.0  || true'
             archiveArtifacts artifacts: 'nuclei-report.txt', fingerprint: true
+            publishHTML([
+                reportDir: 'reports',
+                reportFiles: 'htmlhint-report.html,stylelint-report.html,sonarqube-report.html,nuclei-report.html,trivy-report.html',
+                reportName: 'Pipeline Reports'
+                keelAll: ture
+            ])
         }
         
     }
