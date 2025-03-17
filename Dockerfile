@@ -5,7 +5,7 @@ FROM nginx:latest
 WORKDIR /usr/share/nginx/html
 
 # Copy all website files from the Jenkins workspace to the container
-COPY . .
+COPY src/ .
 
 # Expose port 80
 EXPOSE 80
