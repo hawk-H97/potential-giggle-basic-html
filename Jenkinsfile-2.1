@@ -126,7 +126,8 @@ pipeline {
                 reportFiles: 'htmlhint-report.html,stylelint-report.html,sonarqube-report.html,nuclei-report.html,trivy-report.html',
                 reportName: 'Pipeline Reports',
                 keepAll: true,
-                alwaysLinkToLastBuild: true
+                alwaysLinkToLastBuild: true,
+                allowMissing: true
             ])
         }
         
