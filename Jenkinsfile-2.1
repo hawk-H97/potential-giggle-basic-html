@@ -91,15 +91,15 @@ pipeline {
         stage('Trivy Security Scan') {
             steps {
                 sh '''
-                docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v $(pwd):/workspace aquasec/trivy \
-                image --format template --template "@contrib/html.tpl" -o reports/trivy-report.html frontend:1.0 || true 
+                docker run --rm \
+                -v /var/run/docker.sock:/var/run/docker.sock \
+                aquasec/trivy image frontend:1.0 || true > reports/trivy-report.html
                 '''
             }
         }
         stage('Nuclei DAST Scan') {
             steps {
                 sh '''
-                rm -rf nuclei-report.txt
                 # Create a Docker network (only if not exists)
                 docker network create security-net || true
 
@@ -111,7 +111,7 @@ pipeline {
                 
                 # Run Nuclei scan and ensure the report file is generated
                 docker run --rm --network security-net -v $(pwd):/data projectdiscovery/nuclei \
-                -u http://my-website:80 -o /data/nuclei-report.txt || true
+                -u http://my-website:80 -o /data/nuclei-report.txt || true > reports/nuclei-report.html
                 '''
             }
         }
