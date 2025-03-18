@@ -21,6 +21,7 @@ pipeline {
                 docker run -dit --name node-test -v $WORKSPACE:/workspace -w /workspace node bash
                 docker exec node-test bash -c "npm install htmlhint stylelint && echo 'Dependencies installed'"
                 '''
+                sh 'mkdir -p reports'
             }
         }
         stage('Security Scan (audit-ci)') {
@@ -37,8 +38,8 @@ pipeline {
         stage('Test') {
             steps {
                 sh '''
-                docker exec node-test bash -c "npx htmlhint 'src/*.html' || true"
-                docker exec node-test bash -c "npx stylelint 'src/*.css' || true"
+                sh 'docker exec node-test bash -c "npx htmlhint src/*.html > reports/htmlhint-report.html || true"'
+                sh 'docker exec node-test bash -c "npx stylelint src/*.css > reports/stylelint-report.html || true"'
                 '''
             }
         }
@@ -55,7 +56,7 @@ pipeline {
                     sonar-scanner \
                     -Dsonar.sources=src \
                     -Dsonar.projectKey=Barber_website \
-                    -Dsonar.projectName=Barber_website 
+                    -Dsonar.projectName=Barber_website > reports/sonarqube-report.html || true
                     '''
                 }
             }
