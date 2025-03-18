@@ -38,8 +38,8 @@ pipeline {
         stage('Test') {
             steps {
                 sh '''
-                sh 'docker exec node-test bash -c "npx htmlhint src/*.html > reports/htmlhint-report.html || true"'
-                sh 'docker exec node-test bash -c "npx stylelint src/*.css > reports/stylelint-report.html || true"'
+                sh 'docker exec node-test bash -c "npx htmlhint 'src/*.html' > reports/htmlhint-report.html || true"'
+                sh 'docker exec node-test bash -c "npx stylelint 'src/*.css' > reports/stylelint-report.html || true"'
                 '''
             }
         }
