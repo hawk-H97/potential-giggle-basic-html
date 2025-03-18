@@ -55,7 +55,8 @@ pipeline {
                     sonar-scanner \
                     -Dsonar.sources=src \
                     -Dsonar.projectKey=Barber_website \
-                    -Dsonar.projectName=Barber_website 
+                    -Dsonar.projectName=Barber_website \
+                    -Dsonar.working.directory=/workspace/Basic-html-website
                     '''
                 }
             }
@@ -64,15 +65,18 @@ pipeline {
             steps {
                 script {
                     echo "Pipeline paused for manual verification of SonarQube results."
-                    echo "Check SonarQube dashboard at: https://sonar-qube.hawksec.duckdns.org/dashboard?id=Barber_website"
-                    input message: 'SonarQube analysis complete. Review vulnerabilities and approve to continue.',
-                          ok: 'Approve',
-                          submitter: 'admin,user1,user2',
-                          parameters: [
-                            choice(name: 'ACTION', choice: ['Continue', 'Abort'], description: 'Select an action')
-                          ]
-                    if (Action == 'Abort') {
+                    echo "Check SonarQube dashboard at: https://192.168.0.109:9000/dashboard?id=Barber_website"
+
+                    def userChoice = input message: 'SonarQube analysis complete. Review vulnerabilities and approve to continue.',
+                                    ok: 'Approve',
+                                    parameters: [
+                                        choice(name: 'ACTION', choices: ['Continue', 'Abort'], description: 'Select an action')
+                                    ]
+
+                    if (userChoice == 'Abort') {
                         error "Pipeline aborted by user after SonarQube review."
+                    } else {
+                        echo "Pipeline approved. Continuing..."
                     }
                 }
             }
