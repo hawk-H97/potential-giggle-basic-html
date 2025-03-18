@@ -47,7 +47,7 @@ pipeline {
                 withSonarQubeEnv('sq1') {
                     sh '''
                     docker run --rm \
-                    -v $WORKSPACE:/workspace \
+                    -v $(pwd):/workspace \
                     -w /workspace \
                     -e SONAR_HOST_URL=$SONAR_HOST_URL \
                     -e SONAR_TOKEN=$SONAR_AUTH_TOKEN \
@@ -55,7 +55,8 @@ pipeline {
                     sonar-scanner \
                     -Dsonar.sources=src \
                     -Dsonar.projectKey=Barber_website \
-                    -Dsonar.projectName=Barber_website | tee reports/sonarqube-report.html
+                    -Dsonar.projectName=Barber_website \
+                    -Dsonar.working.directory=/workspace/.scannerwork
                     '''
                 }
             }
