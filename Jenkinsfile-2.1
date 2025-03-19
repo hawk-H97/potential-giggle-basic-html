@@ -6,10 +6,10 @@ pipeline {
     }
     stages {
         stage('Cleanup Workspace') {
-        steps {
-            deleteDir() // clean before starting the pipeline
+            steps {
+                deleteDir() // clean before starting the pipeline
+            }
         }
-    }
         stage('Checkout') {
             steps {
                 git url: 'https://github.com/hawk-H97/potential-giggle-basic-html', branch: 'feature'
@@ -95,8 +95,8 @@ pipeline {
 
                     if (userDecision['ACTION'] == 'Build') {
                         def tag = userDecision['IMAGE_TAG']
-                        sh "docker build -t frontend:${tag} ."
-                        echo "Docker image 'frontend:${tag}' built successfully"
+                        sh "docker build -t ashwinhawk/frontend:${tag} ."
+                        echo "Docker image 'ashwinhawk/frontend:${tag}' built successfully"
                     } else {
                         echo "Skipping Docker image build."
                     }
@@ -105,11 +105,9 @@ pipeline {
         }
         stage('Trivy Security Scan') {
             steps {
-                sh '''
-                docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy image --scanners vuln frontend:1.0 || true > reports/trivy-vuln-report.html
-                docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy image --scanners misconfig frontend:1.0 || true > reports/trivy-misconfig-report.html
-                docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy image --scanners license frontend:1.0 || true > reports/trivy-license-report.html
-                '''
+                sh 'docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy image --scanners vuln ashwinhawk/frontend:${tag} || true > reports/trivy-vuln-report.html'
+                sh 'docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy image --scanners misconfig ashwinhawk/frontend:${tag} || true > reports/trivy-misconfig-report.html'
+                sh 'docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy image --scanners license ashwinhawk/frontend:${tag} || true > reports/trivy-license-report.html'
             }
         }
         stage('Nuclei DAST Scan') {
@@ -119,7 +117,7 @@ pipeline {
                 docker network create security-net || true
 
                 # Run the website container in the background
-                docker run -d --name my-website --network security-net -p 8080:80 frontend:1.0
+                docker run -d --name my-website --network security-net -p 8080:80 ashwinhawk/frontend:${tag}
                 
                 # Wait for the website to be ready
                 sleep 10
@@ -130,13 +128,87 @@ pipeline {
                 '''
             }
         }
+        stage('Push to Docker Hub') {
+            steps {
+                script {
+                    // Get available Docker images
+                    def availableImages = sh(
+                        script: "docker images --format '{{.Repository}}:{{.Tag}}'",
+                        returnStdout: true
+                    ).trim().split('\n')
+
+                    if (availableImages.size() == 0) {
+                        echo "No Docker images found to push. Skipping..."
+                        return
+                    }
+
+                    def pushDecision = input(
+                        message: 'Do you want to push a Docker image to Docker Hub?',
+                        ok: 'Proceed',
+                        parameters: [
+                            choice(name: 'ACTION', choices: ['Push', 'Skip'], description: 'Choose whether to push the image or skip.'),
+                            choice(name: 'SELECTED_IMAGE', choices: availableImages.join('\n'), description: 'Select the Docker image to push (if pushing).')
+                        ]
+                    )
+
+                    if (pushDecision['ACTION'] == 'Push') {
+                        def selectedImage = pushDecision['SELECTED_IMAGE']
+
+                        echo "Pushing Docker image '${selectedImage}' to Docker Hub..."
+                
+                        withCredentials([usernamePassword(credentialsId: 'docker-credentials', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
+                            sh """
+                            docker login -u ${DOCKER_USER} -p ${DOCKER_PASS}
+                            docker push ${selectedImage}
+                            """
+                        }
+
+                        echo "Image '${selectedImage}' pushed successfully."
+                    } else {
+                        echo "Skipping Docker push."
+                    }
+                }
+            }
+        }
+
     }    
     post {
         always {
             sh 'docker stop node-test && docker rm node-test || true'
             sh 'docker stop my-website && docker rm my-website || true'
             sh 'docker network rm security-net || true'
-            sh 'docker rmi frontend:1.0  || true'
+            script {
+                // Get available Docker images
+                def availableImages = sh(
+                    script: "docker images --format '{{.Repository}}:{{.Tag}}'",
+                    returnStdout: true
+                ).trim().split('\n')
+
+                if (availableImages.size() == 0) {
+                    echo "No Docker images found for deletion. Skipping..."
+                    return
+                }
+
+                def deleteDecision = input(
+                    message: 'Do you want to delete a Docker image?',
+                    ok: 'Proceed',
+                    parameters: [
+                        choice(name: 'ACTION', choices: ['Delete', 'Skip'], description: 'Choose whether to delete the image or skip.'),
+                        choice(name: 'SELECTED_IMAGE', choices: availableImages.join('\n'), description: 'Select the Docker image to delete (if deleting).')
+                    ]
+                )
+
+                if (deleteDecision['ACTION'] == 'Delete') {
+                    def selectedImage = deleteDecision['SELECTED_IMAGE']
+                    echo "Deleting Docker image '${selectedImage}'..."
+
+                    sh "docker rmi -f ${selectedImage}"
+                    echo "Image '${selectedImage}' deleted successfully."
+                } else {
+                    echo "Skipping Docker image deletion."
+                }
+            }
+            sh 'docker logout || true'
             archiveArtifacts artifacts: 'nuclei-report.txt', fingerprint: true
             publishHTML([
                 reportDir: 'reports',
