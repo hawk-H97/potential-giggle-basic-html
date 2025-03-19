@@ -105,9 +105,9 @@ pipeline {
         }
         stage('Trivy Security Scan') {
             steps {
-                sh 'docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy image --scanners vuln ashwinhawk/frontend:${tag} || true > reports/trivy-vuln-report.html'
-                sh 'docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy image --scanners misconfig ashwinhawk/frontend:${tag} || true > reports/trivy-misconfig-report.html'
-                sh 'docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy image --scanners license ashwinhawk/frontend:${tag} || true > reports/trivy-license-report.html'
+                sh 'docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy image --scanners vuln ashwinhawk/frontend:1.0 || true > reports/trivy-vuln-report.html'
+                sh 'docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy image --scanners misconfig ashwinhawk/frontend:1.0 || true > reports/trivy-misconfig-report.html'
+                sh 'docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy image --scanners license ashwinhawk/frontend:1.0 || true > reports/trivy-license-report.html'
             }
         }
         stage('Nuclei DAST Scan') {
@@ -117,7 +117,7 @@ pipeline {
                 docker network create security-net || true
 
                 # Run the website container in the background
-                docker run -d --name my-website --network security-net -p 8080:80 ashwinhawk/frontend:${tag}
+                docker run -d --name my-website --network security-net -p 8080:80 ashwinhawk/frontend:1.0
                 
                 # Wait for the website to be ready
                 sleep 10
