@@ -83,17 +83,32 @@ pipeline {
         }
         stage('Build Docker Image') {
             steps {
-                sh '''
-                docker build -t frontend:1.0 .
-                '''
+                script {
+                    def userDecision = input(
+                        message: 'Do you want to build the Docker image?',
+                        ok: 'Proceed',
+                        parameters: [
+                            choice(name: 'ACTION', choices: ['Build', 'Skip'], description: 'Choose whether to build the image or skip.'),
+                            string(name: 'IMAGE_TAG', defaultValue: 'latest', description: 'Enter the image tag (applicable only if you choose "Build").')
+                        ]
+                    )
+
+                    if (userDecision['ACTION'] == 'Build') {
+                        def tag = userDecision['IMAGE_TAG']
+                        sh "docker build -t frontend:${tag} ."
+                        echo "Docker image 'frontend:${tag}' built successfully"
+                    } else {
+                        echo "Skipping Docker image build."
+                    }
+                }
             }
         }
         stage('Trivy Security Scan') {
             steps {
                 sh '''
-                docker run --rm \
-                -v /var/run/docker.sock:/var/run/docker.sock \
-                aquasec/trivy image frontend:1.0 || true > reports/trivy-report.html
+                docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy image --scanners vuln frontend:1.0 || true > reports/trivy-vuln-report.html
+                docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy image --scanners misconfig frontend:1.0 || true > reports/trivy-misconfig-report.html
+                docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy image --scanners license frontend:1.0 || true > reports/trivy-license-report.html
                 '''
             }
         }
@@ -125,7 +140,7 @@ pipeline {
             archiveArtifacts artifacts: 'nuclei-report.txt', fingerprint: true
             publishHTML([
                 reportDir: 'reports',
-                reportFiles: 'htmlhint-report.html,stylelint-report.html,sonarqube-report.html,nuclei-report.html,trivy-report.html',
+                reportFiles: 'htmlhint-report.html,stylelint-report.html,sonarqube-report.html,nuclei-report.html,trivy-vuln-report.html,trivy-misconfig-report.html,trivy-license-report.html',
                 reportName: 'Pipeline Reports',
                 keepAll: true,
                 alwaysLinkToLastBuild: true,
