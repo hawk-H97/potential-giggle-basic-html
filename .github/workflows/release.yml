@@ -1,0 +1,31 @@
+
+name: Build and Deploy Frontend
+
+on:
+  push:
+    branches:
+      - release
+
+jobs:
+  build-and-test:
+    runs-on: self-hosted
+    
+    steps:
+
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Build and test Docker image
+        run: |
+
+          docker build -t frontend-app:1.0 .
+
+          docker run -d -p 80:80 --name frontend-test frontend-app:1.0
+
+          sleep 5
+
+          curl http://localhost || exit 1
+          
