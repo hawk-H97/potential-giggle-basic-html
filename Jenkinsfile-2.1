@@ -1,0 +1,137 @@
+pipeline {
+    agent{
+        node {
+            label 'docker'
+        }
+    }
+    stages {
+        stage('Cleanup Workspace') {
+        steps {
+            deleteDir() // clean before starting the pipeline
+        }
+    }
+        stage('Checkout') {
+            steps {
+                git url: 'https://github.com/hawk-H97/potential-giggle-basic-html', branch: 'feature'
+            }
+        }
+        stage('Dependencies') {
+            steps {
+                sh '''
+                docker run -dit --name node-test -v $WORKSPACE:/workspace -w /workspace node bash
+                docker exec node-test bash -c "npm install htmlhint stylelint && echo 'Dependencies installed'"
+                '''
+                sh 'mkdir -p reports'
+            }
+        }
+        stage('Security Scan (audit-ci)') {
+            steps {
+                sh '''
+                docker run --rm \
+                -v $WORKSPACE:/workspace \
+                -w /workspace \
+                node \
+                bash -c "npm install && npx audit-ci --high"
+                '''
+            }
+        }
+        stage('Test') {
+            steps {
+                sh '''
+                docker exec node-test bash -c "npx htmlhint src/*.html || true" > reports/htmlhint-report.html
+                docker exec node-test bash -c "npx stylelint src/*.css || true" > reports/stylelint-report.html 
+                '''
+            }
+        }
+        stage('SonarQube Analysis') {
+            steps {
+                withSonarQubeEnv('sq1') {
+                    sh '''
+                    docker run --rm \
+                    -v $(pwd):/workspace \
+                    -w /workspace \
+                    -e SONAR_HOST_URL=$SONAR_HOST_URL \
+                    -e SONAR_TOKEN=$SONAR_AUTH_TOKEN \
+                    sonarsource/sonar-scanner-cli:latest \
+                    sonar-scanner \
+                    -Dsonar.sources=src \
+                    -Dsonar.projectKey=Barber_website \
+                    -Dsonar.projectName=Barber_website > reports/sonarqube-report.html || true
+                    '''
+                }
+            }
+        }
+        stage('Verify SonarQube Results') {
+            steps {
+                script {
+                    echo "Pipeline paused for manual verification of SonarQube results."
+                    echo "Check SonarQube dashboard at: https://192.168.0.109:9000/dashboard?id=Barber_website"
+
+                    def userChoice = input message: 'SonarQube analysis complete. Review vulnerabilities and approve to continue.',
+                                    ok: 'Approve',
+                                    parameters: [
+                                        choice(name: 'ACTION', choices: ['Continue', 'Abort'], description: 'Select an action')
+                                    ]
+
+                    if (userChoice == 'Abort') {
+                        error "Pipeline aborted by user after SonarQube review."
+                    } else {
+                        echo "Pipeline approved. Continuing..."
+                    }
+                }
+            }
+        }
+        stage('Build Docker Image') {
+            steps {
+                sh '''
+                docker build -t frontend:1.0 .
+                '''
+            }
+        }
+        stage('Trivy Security Scan') {
+            steps {
+                sh '''
+                docker run --rm \
+                -v /var/run/docker.sock:/var/run/docker.sock \
+                aquasec/trivy image frontend:1.0 || true > reports/trivy-report.html
+                '''
+            }
+        }
+        stage('Nuclei DAST Scan') {
+            steps {
+                sh '''
+                # Create a Docker network (only if not exists)
+                docker network create security-net || true
+
+                # Run the website container in the background
+                docker run -d --name my-website --network security-net -p 8080:80 frontend:1.0
+                
+                # Wait for the website to be ready
+                sleep 10
+                
+                # Run Nuclei scan and ensure the report file is generated
+                docker run --rm --network security-net -v $(pwd):/data projectdiscovery/nuclei \
+                -u http://my-website:80 -o /data/nuclei-report.txt || true > reports/nuclei-report.html
+                '''
+            }
+        }
+    }    
+    post {
+        always {
+            sh 'docker stop node-test && docker rm node-test || true'
+            sh 'docker stop my-website && docker rm my-website || true'
+            sh 'docker network rm security-net || true'
+            sh 'docker rmi frontend:1.0  || true'
+            archiveArtifacts artifacts: 'nuclei-report.txt', fingerprint: true
+            publishHTML([
+                reportDir: 'reports',
+                reportFiles: 'htmlhint-report.html,stylelint-report.html,sonarqube-report.html,nuclei-report.html,trivy-report.html',
+                reportName: 'Pipeline Reports',
+                keepAll: true,
+                alwaysLinkToLastBuild: true,
+                allowMissing: true
+            ])
+        }
+        
+    }
+}
