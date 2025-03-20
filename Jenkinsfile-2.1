@@ -26,15 +26,21 @@ pipeline {
         }
         stage('OWASP Dependency Check') {
             steps {
-                sh '''
-                docker run --rm \
-                -v $(pwd):/workspace \
-                owasp/dependency-check \
-                --project "Dependency-Check-Report" \
-                --scan /workspace \
-                --format CSV \
-                --out /reports || true
-                '''
+                withCredentials([string(credentialsId: 'owasp-api-key', variable: 'NVD_API_KEY')]) {
+                    sh '''
+                    mkdir -p reports-1  
+
+                    docker run --rm \
+                    -v $(pwd):/workspace \
+                    -v $(pwd)/reports:/reports \
+                    -e NVD_API_KEY=${NVD_API_KEY} \
+                    owasp/dependency-check \
+                    --project "Dependency-Check-Report" \
+                    --scan /workspace \
+                    --format CSV \
+                    --out /reports-1 || true
+                    '''
+                }
             }
         }    
         stage('Test') {
