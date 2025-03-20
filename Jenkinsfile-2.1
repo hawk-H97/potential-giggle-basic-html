@@ -24,22 +24,24 @@ pipeline {
                 sh 'mkdir -p reports'
             }
         }
-        stage('Security Scan (audit-ci)') {
+        stage('OWASP Dependency Check') {
             steps {
                 sh '''
                 docker run --rm \
-                -v $WORKSPACE:/workspace \
-                -w /workspace \
-                node \
-                bash -c "npm install && npx audit-ci --high"
+                -v $(pwd):/workspace \
+                owasp/dependency-check \
+                --project "Dependency-Check-Report" \
+                --scan /workspace \
+                --format txt \
+                --out $reports/dependency-check-report.txt || true
                 '''
             }
-        }
+        }    
         stage('Test') {
             steps {
                 sh '''
-                docker exec node-test bash -c "npx htmlhint src/*.html || true" > reports/htmlhint-report.html
-                docker exec node-test bash -c "npx stylelint src/*.css || true" > reports/stylelint-report.html 
+                docker exec node-test bash -c "npx htmlhint src/*.html || true" > $reports/htmlhint-report.txt
+                docker exec node-test bash -c "npx stylelint src/*.css || true" > $reports/stylelint-report.txt 
                 '''
             }
         }
@@ -56,7 +58,7 @@ pipeline {
                     sonar-scanner \
                     -Dsonar.sources=src \
                     -Dsonar.projectKey=Barber_website \
-                    -Dsonar.projectName=Barber_website > reports/sonarqube-report.html || true
+                    -Dsonar.projectName=Barber_website > $reports/sonarqube-report.html || true
                     '''
                 }
             }
@@ -105,9 +107,9 @@ pipeline {
         }
         stage('Trivy Security Scan') {
             steps {
-                sh 'docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy image --scanners vuln ashwinhawk/frontend:1.0 || true > reports/trivy-vuln-report.html'
-                sh 'docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy image --scanners misconfig ashwinhawk/frontend:1.0 || true > reports/trivy-misconfig-report.html'
-                sh 'docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy image --scanners license ashwinhawk/frontend:1.0 || true > reports/trivy-license-report.html'
+                sh 'docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy image --scanners vuln ashwinhawk/frontend:1.0 || true > $reports/trivy-vuln-report.txt'
+                sh 'docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy image --scanners misconfig ashwinhawk/frontend:1.0 || true > $reports/trivy-misconfig-report.txt'
+                sh 'docker run --rm -v /var/run/docker.sock:/var/run/docker.sock aquasec/trivy image --scanners license ashwinhawk/frontend:1.0 || true > $reports/trivy-license-report.txt'
             }
         }
         stage('Nuclei DAST Scan') {
@@ -124,7 +126,7 @@ pipeline {
                 
                 # Run Nuclei scan and ensure the report file is generated
                 docker run --rm --network security-net -v $(pwd):/data projectdiscovery/nuclei \
-                -u http://my-website:80 -o /data/nuclei-report.txt || true > reports/nuclei-report.html
+                -u http://my-website:80 -o /data/nuclei-report.txt || true 
                 '''
             }
         }
@@ -209,15 +211,7 @@ pipeline {
                 }
             }
             sh 'docker logout || true'
-            archiveArtifacts artifacts: 'nuclei-report.txt', fingerprint: true
-            publishHTML([
-                reportDir: 'reports',
-                reportFiles: 'htmlhint-report.html,stylelint-report.html,sonarqube-report.html,nuclei-report.html,trivy-vuln-report.html,trivy-misconfig-report.html,trivy-license-report.html',
-                reportName: 'Pipeline Reports',
-                keepAll: true,
-                alwaysLinkToLastBuild: true,
-                allowMissing: true
-            ])
+            archiveArtifacts artifacts: 'nuclei-report.txt', 'trivy-license-report.txt', 'trivy-misconfig-report.txt', 'trivy-vuln-report.txt', 'stylelint-report.txt', 'htmlhint-report.tx' , fingerprint: true
         }
         
     }
