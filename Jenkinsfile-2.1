@@ -211,7 +211,7 @@ pipeline {
                 }
             }
             sh 'docker logout || true'
-            archiveArtifacts artifacts: 'nuclei-report.txt', 'trivy-license-report.txt', 'trivy-misconfig-report.txt', 'trivy-vuln-report.txt', 'stylelint-report.txt', 'htmlhint-report.tx' , fingerprint: true
+            archiveArtifacts artifacts: 'nuclei-report.txt,trivy-license-report.txt,trivy-misconfig-report.txt,trivy-vuln-report.txt,stylelint-report.txt,htmlhint-report.txt', fingerprint: true
         }
         
     }
