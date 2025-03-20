@@ -24,24 +24,17 @@ pipeline {
                 sh 'mkdir -p reports'
             }
         }
-        stage('OWASP Dependency Check') {
+        stage('Security Scan (audit-ci)') {
             steps {
                 sh '''
-                mkdir -p reports-1 
-                pwd 
-
                 docker run --rm \
-                -v $(pwd):/workspace \
-                -v $(pwd)/reports:/reports \
-                --env-file /etc/nvd.env \
-                owasp/dependency-check \
-                --project "Dependency-Check-Report" \
-                --scan /workspace \
-                --format CSV \
-                --out /reports-1 || true
+                -v $WORKSPACE:/workspace \
+                -w /workspace \
+                node \
+                bash -c "npm install && npx audit-ci --high"
                 '''
             }
-        }    
+        }   
         stage('Test') {
             steps {
                 sh '''
