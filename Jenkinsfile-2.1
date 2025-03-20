@@ -33,7 +33,7 @@ pipeline {
                 --project "Dependency-Check-Report" \
                 --scan /workspace \
                 --format CSV \
-                --out $reports || true
+                --out /reports || true
                 '''
             }
         }    
